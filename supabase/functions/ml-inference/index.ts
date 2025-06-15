@@ -54,128 +54,246 @@ interface PacketFeatures {
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders })
+    return new Response(null, { headers: corsHeaders })
   }
 
   try {
-    const supabaseClient = createClient(
+    const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
-    const { packet_features, source_ip, dest_ip } = await req.json()
+    if (req.method === 'POST') {
+      const { features, source_ip, dest_ip } = await req.json()
+      
+      console.log('Received packet features for classification:', { source_ip, dest_ip })
+      
+      // Simulate ML model prediction (replace with actual model)
+      const prediction = simulateMLPrediction(features)
+      
+      console.log('ML Prediction:', prediction)
+      
+      // Store alert in database if malicious
+      if (prediction.is_malicious) {
+        const { data: alertData, error: alertError } = await supabase
+          .from('network_alerts')
+          .insert({
+            source_ip,
+            dest_ip,
+            attack_type: prediction.attack_type,
+            severity: prediction.severity,
+            confidence_score: prediction.confidence,
+            packet_data: features
+          })
+          .select()
+          .single()
+        
+        if (alertError) {
+          console.error('Error inserting alert:', alertError)
+          throw alertError
+        }
 
-    // Simple rule-based classification for demonstration
-    // In a real implementation, you would load your trained RandomForest model here
-    const prediction = classifyPacket(packet_features)
+        console.log('Alert stored:', alertData)
 
-    // Store the alert in the database if it's malicious
-    if (prediction.is_malicious) {
-      const { error } = await supabaseClient
-        .from('network_alerts')
+        // Auto-block critical IPs
+        if (prediction.severity === 'Critical') {
+          console.log('Auto-blocking critical IP:', source_ip)
+          
+          const { error: blockError } = await supabase
+            .from('blocked_ips')
+            .insert({
+              ip_address: source_ip,
+              block_reason: `Auto-blocked: ${prediction.attack_type} (${prediction.confidence * 100}% confidence)`,
+              is_active: true
+            })
+          
+          if (blockError && !blockError.message.includes('duplicate')) {
+            console.error('Error auto-blocking IP:', blockError)
+          } else {
+            console.log('IP auto-blocked successfully')
+          }
+        }
+      }
+      
+      return new Response(
+        JSON.stringify({ 
+          prediction,
+          alert_stored: prediction.is_malicious 
+        }),
+        { 
+          headers: { 
+            'Content-Type': 'application/json',
+            ...corsHeaders 
+          } 
+        }
+      )
+    }
+
+    // Handle demo traffic generation
+    if (req.method === 'GET' && new URL(req.url).searchParams.get('action') === 'generate_demo_traffic') {
+      console.log('Generating demo traffic...')
+      
+      // Generate realistic traffic stats
+      const currentTime = new Date().toISOString()
+      const totalPackets = Math.floor(Math.random() * 1000) + 500
+      const maliciousPackets = Math.floor(Math.random() * 50) + 5
+      const normalPackets = totalPackets - maliciousPackets
+      const bytesTransferred = totalPackets * (Math.floor(Math.random() * 1000) + 500)
+      
+      const { error: statsError } = await supabase
+        .from('traffic_stats')
         .insert({
-          source_ip,
-          dest_ip,
-          attack_type: prediction.attack_type,
-          severity: prediction.severity,
-          confidence_score: prediction.confidence,
-          packet_data: packet_features
+          timestamp: currentTime,
+          total_packets: totalPackets,
+          normal_packets: normalPackets,
+          malicious_packets: maliciousPackets,
+          bytes_transferred: bytesTransferred
         })
-
-      if (error) {
-        console.error('Error inserting alert:', error)
+      
+      if (statsError) {
+        console.error('Error inserting traffic stats:', statsError)
       }
 
-      // Update traffic statistics
-      await updateTrafficStats(supabaseClient, false)
-    } else {
-      await updateTrafficStats(supabaseClient, true)
+      // Generate some random alerts
+      const attackTypes = ['DoS Attack', 'Port Scan', 'Brute Force', 'SQL Injection', 'DDoS', 'Malware', 'Botnet Communication']
+      const severities = ['Low', 'Medium', 'High', 'Critical']
+      
+      for (let i = 0; i < Math.floor(Math.random() * 3) + 1; i++) {
+        const sourceIP = `${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}.${Math.floor(Math.random() * 255)}`
+        const destIP = `192.168.1.${Math.floor(Math.random() * 254) + 1}`
+        const attackType = attackTypes[Math.floor(Math.random() * attackTypes.length)]
+        const severity = severities[Math.floor(Math.random() * severities.length)]
+        const confidence = Math.random() * 0.4 + 0.6 // 60-100% confidence
+        
+        const { error: alertError } = await supabase
+          .from('network_alerts')
+          .insert({
+            source_ip: sourceIP,
+            dest_ip: destIP,
+            attack_type: attackType,
+            severity: severity,
+            confidence_score: confidence,
+            timestamp: currentTime
+          })
+        
+        if (alertError) {
+          console.error('Error inserting demo alert:', alertError)
+        }
+
+        // Auto-block critical IPs in demo
+        if (severity === 'Critical' && Math.random() > 0.5) {
+          const { error: blockError } = await supabase
+            .from('blocked_ips')
+            .insert({
+              ip_address: sourceIP,
+              block_reason: `Auto-blocked: ${attackType} (Demo)`,
+              is_active: true
+            })
+          
+          if (blockError && !blockError.message.includes('duplicate')) {
+            console.error('Error auto-blocking demo IP:', blockError)
+          }
+        }
+      }
+      
+      return new Response(
+        JSON.stringify({ success: true, message: 'Demo traffic generated' }),
+        { 
+          headers: { 
+            'Content-Type': 'application/json',
+            ...corsHeaders 
+          } 
+        }
+      )
     }
 
     return new Response(
-      JSON.stringify({
-        is_malicious: prediction.is_malicious,
-        attack_type: prediction.attack_type,
-        confidence: prediction.confidence,
-        severity: prediction.severity
-      }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
-      },
+      JSON.stringify({ error: 'Invalid request' }),
+      { 
+        status: 400,
+        headers: { 
+          'Content-Type': 'application/json',
+          ...corsHeaders 
+        } 
+      }
     )
+
   } catch (error) {
+    console.error('Error in ml-inference function:', error)
     return new Response(
       JSON.stringify({ error: error.message }),
-      {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
-      },
+      { 
+        status: 500,
+        headers: { 
+          'Content-Type': 'application/json',
+          ...corsHeaders 
+        } 
+      }
     )
   }
 })
 
-function classifyPacket(features: PacketFeatures) {
-  // Simple rule-based classification (replace with actual ML model)
-  let score = 0
-  let attack_type = 'Normal'
-  let severity = 'Low'
-
-  // Check for DoS patterns
-  if (features.count > 500 || features.src_bytes > 10000) {
-    score += 0.3
-    attack_type = 'DoS'
-    severity = 'High'
+function simulateMLPrediction(features: PacketFeatures) {
+  // Simulate RandomForest model prediction based on NSL-KDD features
+  const attackTypes = ['DoS', 'Probe', 'R2L', 'U2R', 'Normal']
+  const attackTypeWeights = [0.3, 0.25, 0.2, 0.15, 0.1] // Higher chance of attacks
+  
+  // Use features to determine likelihood of attack
+  let suspicionScore = 0
+  
+  // High traffic volume indicators
+  if (features.src_bytes > 1000 || features.dst_bytes > 1000) suspicionScore += 0.3
+  if (features.count > 100) suspicionScore += 0.2
+  if (features.srv_count > 50) suspicionScore += 0.15
+  
+  // Error rate indicators
+  if (features.serror_rate > 0.5) suspicionScore += 0.4
+  if (features.rerror_rate > 0.5) suspicionScore += 0.3
+  
+  // Login failure indicators
+  if (features.num_failed_logins > 3) suspicionScore += 0.5
+  if (features.num_compromised > 0) suspicionScore += 0.6
+  
+  // Add some randomness
+  suspicionScore += Math.random() * 0.3
+  
+  const isAttack = suspicionScore > 0.4
+  
+  if (!isAttack) {
+    return {
+      is_malicious: false,
+      attack_type: 'Normal Traffic',
+      severity: 'Low',
+      confidence: Math.random() * 0.3 + 0.7
+    }
   }
-
-  // Check for probe patterns
-  if (features.dst_host_count > 100 && features.same_srv_rate < 0.1) {
-    score += 0.4
-    attack_type = 'Probe'
-    severity = 'Medium'
+  
+  // Determine attack type based on features
+  let attackType = 'DoS Attack'
+  if (features.count > 200 && features.same_srv_rate > 0.8) {
+    attackType = 'DoS Attack'
+  } else if (features.srv_count > 50 && features.diff_srv_rate > 0.5) {
+    attackType = 'Port Scan'
+  } else if (features.num_failed_logins > 0) {
+    attackType = 'Brute Force'
+  } else if (features.dst_host_count > 100) {
+    attackType = 'DDoS'
+  } else if (Math.random() > 0.7) {
+    attackType = 'SQL Injection'
   }
-
-  // Check for R2L patterns
-  if (features.num_failed_logins > 3 || features.is_guest_login === 1) {
-    score += 0.5
-    attack_type = 'R2L'
-    severity = 'Critical'
-  }
-
-  // Check for U2R patterns
-  if (features.num_root > 0 || features.root_shell > 0) {
-    score += 0.6
-    attack_type = 'U2R'
-    severity = 'Critical'
-  }
-
-  const is_malicious = score > 0.3
-
+  
+  // Determine severity based on suspicion score
+  let severity = 'Medium'
+  if (suspicionScore > 0.8) severity = 'Critical'
+  else if (suspicionScore > 0.6) severity = 'High'
+  else if (suspicionScore < 0.5) severity = 'Low'
+  
+  const confidence = Math.min(suspicionScore + Math.random() * 0.2, 1.0)
+  
   return {
-    is_malicious,
-    attack_type: is_malicious ? attack_type : 'Normal',
-    confidence: Math.min(score, 1.0),
-    severity: is_malicious ? severity : 'Low'
+    is_malicious: true,
+    attack_type: attackType,
+    severity,
+    confidence
   }
-}
-
-async function updateTrafficStats(supabaseClient: any, isNormal: boolean) {
-  // Get the latest stats
-  const { data: latestStats } = await supabaseClient
-    .from('traffic_stats')
-    .select('*')
-    .order('timestamp', { ascending: false })
-    .limit(1)
-    .single()
-
-  const newStats = {
-    total_packets: (latestStats?.total_packets || 0) + 1,
-    normal_packets: (latestStats?.normal_packets || 0) + (isNormal ? 1 : 0),
-    malicious_packets: (latestStats?.malicious_packets || 0) + (isNormal ? 0 : 1),
-    bytes_transferred: (latestStats?.bytes_transferred || 0) + 1500 // Average packet size
-  }
-
-  await supabaseClient
-    .from('traffic_stats')
-    .insert(newStats)
 }

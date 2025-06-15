@@ -1,4 +1,5 @@
-import React from 'react';
+
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Shield, AlertTriangle, Activity, Ban } from 'lucide-react';
@@ -8,16 +9,58 @@ import { LiveAlertsPanel } from './dashboard/LiveAlertsPanel';
 import { TrafficChart } from './dashboard/TrafficChart';
 import { ThreatMap } from './dashboard/ThreatMap';
 import { TopThreats } from './dashboard/TopThreats';
+import { IPManagement } from './dashboard/IPManagement';
+import { NotificationCenter } from './dashboard/NotificationCenter';
+import { AlertInvestigationModal } from './modals/AlertInvestigationModal';
 import { DemoControls } from './DemoControls';
+import { NetworkAlert } from '@/types/netshield';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/components/ui/use-toast';
 
 export const NetShieldDashboard = () => {
   const { alerts, isLoading: alertsLoading } = useNetworkAlerts();
   const { stats, isLoading: statsLoading } = useTrafficStats();
   const { blockedIPs, isLoading: blockedLoading } = useBlockedIPs();
+  
+  const [selectedAlert, setSelectedAlert] = useState<NetworkAlert | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const latestStats = stats[0];
   const criticalAlerts = alerts.filter(alert => alert.severity === 'Critical').length;
   const totalThreatsBlocked = blockedIPs.length;
+
+  const handleAlertClick = (alert: NetworkAlert) => {
+    setSelectedAlert(alert);
+    setIsModalOpen(true);
+  };
+
+  const handleBlockIP = async (ip: string) => {
+    try {
+      const { error } = await supabase
+        .from('blocked_ips')
+        .insert({
+          ip_address: ip,
+          block_reason: 'Blocked from alert investigation',
+          is_active: true
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "IP Blocked Successfully",
+        description: `${ip} has been added to the blocklist`,
+      });
+      
+      setIsModalOpen(false);
+    } catch (error) {
+      console.error('Error blocking IP:', error);
+      toast({
+        title: "Error",
+        description: "Failed to block IP",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-6">
@@ -101,10 +144,26 @@ export const NetShieldDashboard = () => {
 
           {/* Right Column */}
           <div className="space-y-6">
-            <LiveAlertsPanel alerts={alerts.slice(0, 10)} />
+            <LiveAlertsPanel 
+              alerts={alerts.slice(0, 10)} 
+              onAlertClick={handleAlertClick}
+            />
             <TopThreats alerts={alerts} blockedIPs={blockedIPs} />
+            <IPManagement blockedIPs={blockedIPs} />
+            <NotificationCenter alerts={alerts} />
           </div>
         </div>
+
+        {/* Alert Investigation Modal */}
+        <AlertInvestigationModal
+          alert={selectedAlert}
+          isOpen={isModalOpen}
+          onClose={() => {
+            setIsModalOpen(false);
+            setSelectedAlert(null);
+          }}
+          onBlockIP={handleBlockIP}
+        />
       </div>
     </div>
   );
