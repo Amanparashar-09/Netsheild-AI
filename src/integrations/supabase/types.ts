@@ -9,7 +9,132 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      blocked_ips: {
+        Row: {
+          block_reason: string
+          blocked_at: string
+          created_at: string
+          id: string
+          ip_address: unknown
+          is_active: boolean
+          unblock_at: string | null
+        }
+        Insert: {
+          block_reason: string
+          blocked_at?: string
+          created_at?: string
+          id?: string
+          ip_address: unknown
+          is_active?: boolean
+          unblock_at?: string | null
+        }
+        Update: {
+          block_reason?: string
+          blocked_at?: string
+          created_at?: string
+          id?: string
+          ip_address?: unknown
+          is_active?: boolean
+          unblock_at?: string | null
+        }
+        Relationships: []
+      }
+      detection_rules: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          rule_name: string
+          rule_pattern: string
+          severity: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          rule_name: string
+          rule_pattern: string
+          severity: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          rule_name?: string
+          rule_pattern?: string
+          severity?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      network_alerts: {
+        Row: {
+          attack_type: string
+          confidence_score: number
+          created_at: string
+          dest_ip: unknown
+          id: string
+          packet_data: Json | null
+          severity: string
+          source_ip: unknown
+          timestamp: string
+        }
+        Insert: {
+          attack_type: string
+          confidence_score: number
+          created_at?: string
+          dest_ip: unknown
+          id?: string
+          packet_data?: Json | null
+          severity: string
+          source_ip: unknown
+          timestamp?: string
+        }
+        Update: {
+          attack_type?: string
+          confidence_score?: number
+          created_at?: string
+          dest_ip?: unknown
+          id?: string
+          packet_data?: Json | null
+          severity?: string
+          source_ip?: unknown
+          timestamp?: string
+        }
+        Relationships: []
+      }
+      traffic_stats: {
+        Row: {
+          bytes_transferred: number
+          created_at: string
+          id: string
+          malicious_packets: number
+          normal_packets: number
+          timestamp: string
+          total_packets: number
+        }
+        Insert: {
+          bytes_transferred?: number
+          created_at?: string
+          id?: string
+          malicious_packets?: number
+          normal_packets?: number
+          timestamp?: string
+          total_packets?: number
+        }
+        Update: {
+          bytes_transferred?: number
+          created_at?: string
+          id?: string
+          malicious_packets?: number
+          normal_packets?: number
+          timestamp?: string
+          total_packets?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
