@@ -1,73 +1,89 @@
-# Welcome to your Lovable project
+# 🛡️ NetShield AI
 
-## Project info
+**Real-Time AI-Powered Network Intrusion Detection System**
 
-**URL**: https://lovable.dev/projects/62da0119-64f7-4898-a3d5-a62235597465
+NetShield AI is a full-stack, production-ready Network Intrusion Detection System (NIDS) that leverages machine learning to detect cyber attacks in real-time and visualizes them through a live dashboard. Built with modern web technologies and designed for performance, it enables live traffic monitoring, intelligent threat detection, and interactive security analytics.
 
-## How can I edit this code?
 
-There are several ways of editing your application.
+---
 
-**Use Lovable**
+## 🚀 Features
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/62da0119-64f7-4898-a3d5-a62235597465) and start prompting.
+- 📡 **Real-time packet analysis** using Python + Scapy
+- 🧠 **ML-powered intrusion detection** with a RandomForest model trained on NSL-KDD
+- 📊 **Live React dashboard** with charts, maps, and alerts
+- 🌐 **Geo-IP mapping** of malicious traffic sources
+- 🔒 **Auto-blocking of malicious IPs**
+- ⚙️ **Custom detection rules** for known attack patterns
+- 📥 **Traffic simulator & sample attack generator**
+- 🔔 **Real-time alerts & threat confidence levels**
+- 📈 **Historical analytics & attack trends**
+- 🎨 **Dark/light mode UI for SOC environments**
 
-Changes made via Lovable will be committed automatically to this repo.
+---
 
-**Use your preferred IDE**
+## 📁 Project Structure
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+How to run it on your systems
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
+```bash
+# Step 1: Clone the repository
 git clone <YOUR_GIT_URL>
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+# Step 2: Navigate to project folder
+cd netshield-ai
 
-# Step 3: Install the necessary dependencies.
-npm i
+# Step 3: Install dependencies
+npm install
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Step 4: Start the dev server
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+Make changes locally and push to GitHub.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+---
 
-**Use GitHub Codespaces**
+## 🧰 Tech Stack
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+- ⚡️ [Vite](https://vitejs.dev/)
+- 🛠️ [TypeScript](https://www.typescriptlang.org/)
+- ⚛️ [React](https://reactjs.org/)
+- 🎨 [Tailwind CSS](https://tailwindcss.com/)
+- 💎 [shadcn/ui](https://ui.shadcn.com/)
+- 🔌 Supabase (PostgreSQL + Realtime + Edge Functions)
+- 🤖 Python + Scapy + ML (RandomForest)
 
-## What technologies are used for this project?
+---
 
-This project is built with:
+## 📊 ML Model
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+We use a RandomForest model trained on the **NSL-KDD** dataset. The model is hosted via **Supabase Edge Functions** and processes packet features in real time to detect:
 
-## How can I deploy this project?
+- Normal Traffic ✅  
+- DoS (Denial of Service) 🛑  
+- Probe/Scan 📡  
+- U2R (User to Root) 🧑‍💻  
+- R2L (Remote to Local) 🔓
 
-Simply open [Lovable](https://lovable.dev/projects/62da0119-64f7-4898-a3d5-a62235597465) and click on Share -> Publish.
+---
 
-## Can I connect a custom domain to my Lovable project?
+## 🤝 Contributing
 
-Yes, you can!
+Contributions are welcome! Please fork the repo, make your changes, and submit a pull request. Open issues or ideas in the Discussions tab to get feedback or support.
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+---
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+## 📜 License
+
+This project is licensed under the [MIT License](LICENSE).
+
+---
+
+## 🧠 Credits
+
+Developed by [Aman Parashar](https://github.com/Amanparashar-09) — combining knowledge in networking, machine learning, and full-stack development into a unique cybersecurity solution.
+
+---
+
+> ⚡ If you found this project interesting or useful, consider giving it a ⭐️ on GitHub!
