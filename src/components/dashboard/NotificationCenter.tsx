@@ -6,7 +6,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Bell, Mail, MessageSquare, Smartphone, Settings } from 'lucide-react';
 import { NetworkAlert } from '@/types/netshield';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/hooks/use-toast';
 
 interface NotificationCenterProps {
   alerts: NetworkAlert[];
@@ -30,36 +30,47 @@ export const NotificationCenter = ({ alerts }: NotificationCenterProps) => {
   });
 
   const [recentNotifications, setRecentNotifications] = useState<string[]>([]);
+  const [processedAlerts, setProcessedAlerts] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    // Monitor for critical alerts
-    const criticalAlerts = alerts.filter(alert => alert.severity === 'Critical');
+    // Monitor for critical alerts - avoid duplicate processing
+    const criticalAlerts = alerts.filter(alert => 
+      alert.severity === 'Critical' && !processedAlerts.has(alert.id)
+    );
     
     if (criticalAlerts.length > 0 && settings.criticalOnly) {
-      const latestAlert = criticalAlerts[0];
-      const notificationId = `${latestAlert.id}-${Date.now()}`;
-      
-      if (!recentNotifications.includes(notificationId)) {
-        triggerNotification(latestAlert);
-        setRecentNotifications(prev => [notificationId, ...prev.slice(0, 4)]);
-      }
+      criticalAlerts.forEach(alert => {
+        triggerNotification(alert);
+        setProcessedAlerts(prev => new Set(prev).add(alert.id));
+        setRecentNotifications(prev => [
+          `Critical alert: ${alert.attack_type}`,
+          ...prev.slice(0, 4)
+        ]);
+      });
     }
 
-    // Check threshold
+    // Check threshold - only for recent alerts (last minute)
     const recentAlerts = alerts.filter(alert => {
       const alertTime = new Date(alert.timestamp);
       const oneMinuteAgo = new Date(Date.now() - 60000);
       return alertTime > oneMinuteAgo;
     });
 
-    if (recentAlerts.length >= settings.threshold) {
-      toast({
-        title: "High Alert Volume",
-        description: `${recentAlerts.length} alerts in the last minute`,
-        variant: "destructive",
-      });
+    if (recentAlerts.length >= settings.threshold && recentAlerts.length > 0) {
+      // Only show threshold warning once per minute
+      const lastThresholdWarning = localStorage.getItem('lastThresholdWarning');
+      const now = Date.now();
+      
+      if (!lastThresholdWarning || now - parseInt(lastThresholdWarning) > 60000) {
+        toast({
+          title: "High Alert Volume",
+          description: `${recentAlerts.length} alerts in the last minute`,
+          variant: "destructive",
+        });
+        localStorage.setItem('lastThresholdWarning', now.toString());
+      }
     }
-  }, [alerts, settings, recentNotifications]);
+  }, [alerts, settings, processedAlerts]);
 
   const triggerNotification = (alert: NetworkAlert) => {
     // Browser notification
@@ -70,22 +81,24 @@ export const NotificationCenter = ({ alerts }: NotificationCenterProps) => {
       });
     }
 
-    // Toast notification
-    toast({
-      title: "Critical Security Alert",
-      description: `${alert.attack_type} from ${alert.source_ip}`,
-      variant: "destructive",
-    });
+    // Toast notification - only for critical
+    if (alert.severity === 'Critical') {
+      toast({
+        title: "Critical Security Alert",
+        description: `${alert.attack_type} from ${alert.source_ip}`,
+        variant: "destructive",
+      });
+    }
 
-    // Here you would integrate with actual notification services
+    // Simulate external notifications
     if (settings.email) {
-      console.log('Would send email notification');
+      console.log(`Email notification sent for alert: ${alert.id}`);
     }
     if (settings.sms) {
-      console.log('Would send SMS notification');
+      console.log(`SMS notification sent for alert: ${alert.id}`);
     }
     if (settings.discord) {
-      console.log('Would send Discord notification');
+      console.log(`Discord notification sent for alert: ${alert.id}`);
     }
   };
 
@@ -176,10 +189,10 @@ export const NotificationCenter = ({ alerts }: NotificationCenterProps) => {
             {recentNotifications.length === 0 ? (
               <div className="text-gray-400 text-sm">No recent notifications</div>
             ) : (
-              recentNotifications.map((notificationId, index) => (
-                <div key={notificationId} className="p-2 bg-gray-700 rounded text-sm">
+              recentNotifications.map((notification, index) => (
+                <div key={`${notification}-${index}`} className="p-2 bg-gray-700 rounded text-sm">
                   <div className="flex items-center justify-between">
-                    <span className="text-white">Critical alert triggered</span>
+                    <span className="text-white">{notification}</span>
                     <Badge variant="outline" className="text-red-400 border-red-400">
                       Critical
                     </Badge>
